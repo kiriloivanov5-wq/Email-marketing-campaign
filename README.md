@@ -2,6 +2,7 @@
 
 ## 📌 Project Overview
 This project focuses on building an End-to-End Analytics Pipeline to evaluate user registration activity alongside email marketing performance. Using **Google BigQuery (SQL)**, the analysis aggregates key account metrics, tracks email delivery, open rates, and click/visit events, and ranks top-performing geographic regions using advanced SQL window functions.
+* [Processed Output & Dataset](https://docs.google.com/spreadsheets/d/1aSqvzqGQFtwHmsP-mI0eLRBsADJ6-W514JdT7F7nvXQ/edit?usp=sharing)
 
 ---
 
