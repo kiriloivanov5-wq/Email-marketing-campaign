@@ -32,5 +32,5 @@ The SQL query processes data through a structured multi-stage CTE pipeline:
 ---
 
 ## 📁 Repository Structure
-* `/scripts` — Contains structured `.sql` code files (`01_email_engagement_pipeline.sql`).
+* `/scripts` — Contains structured `.sql` code files (`email_engagement_pipeline.sql`).
 * `README.md` — Project documentation and pipeline description.
