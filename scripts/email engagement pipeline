@@ -1,0 +1,45 @@
+WITH accounts AS
+(SELECT date, country, send_interval, is_verified, is_unsubscribed, COUNT(DISTINCT id) AS account_cnt
+FROM `DA.account` a
+JOIN `DA.account_session` acs ON a.id=acs.account_id
+JOIN `DA.session` s ON acs.ga_session_id=s.ga_session_id
+JOIN `DA.session_params` ses ON acs.ga_session_id=ses.ga_session_id
+GROUP BY date, country, send_interval, is_verified, is_unsubscribed), -- CTE accounts показує основні метрики по акаунтах
+emails AS
+(SELECT DATE_ADD(date, INTERVAL sent_date DAY) AS sent_date, country, send_interval, is_verified, is_unsubscribed,
+COUNT(es.id_message) AS sent_msg,
+COUNT(eo.id_message) AS open_msg,
+COUNT(ev.id_message) AS visit_msg,
+FROM `DA.email_sent` es
+LEFT JOIN `DA.email_open` eo ON es.id_message=eo.id_message
+LEFT JOIN `DA.email_visit` ev ON es.id_message=ev.id_message
+JOIN `DA.account` acc ON es.id_account=acc.id
+JOIN `DA.account_session` acs ON acc.id=acs.account_id
+JOIN `DA.session` ses ON acs.ga_session_id=ses.ga_session_id
+JOIN `DA.session_params` sp ON ses.ga_session_id=sp.ga_session_id
+GROUP BY DATE_ADD(date, INTERVAL sent_date DAY), country, send_interval, is_verified, is_unsubscribed), -- у СТЕ emails обчислюються метрики по листах
+unions AS  
+(
+  SELECT date, country, send_interval, is_verified, is_unsubscribed, account_cnt, 0 AS sent_msg, 0 AS open_msg, 0 AS visit_msg
+  FROM accounts
+  UNION DISTINCT
+  SELECT sent_date, country, send_interval, is_verified, is_unsubscribed, 0 AS account_cnt, sent_msg, open_msg, visit_msg
+  FROM emails  
+),
+unions2 AS  
+(
+SELECT date, country, send_interval, is_verified, is_unsubscribed, SUM(account_cnt) AS account_cnt, SUM(sent_msg) AS sent_msg, SUM(open_msg) AS open_msg, SUM(visit_msg) AS visit_msg
+FROM unions
+GROUP BY date, country, send_interval, is_verified, is_unsubscribed
+), -- у СТЕ unions та unions2 ми об'єднуємо метрики по акаунтах та листах
+total AS
+(
+SELECT date, country, send_interval, is_verified, is_unsubscribed, account_cnt,
+       SUM(account_cnt) OVER(partition by country) AS total_country_account_cnt,
+       sent_msg, SUM(sent_msg) OVER(partition by country) AS total_country_sent_cnt,
+       open_msg, visit_msg
+FROM unions2
+)
+SELECT date, country, send_interval, is_verified, is_unsubscribed, account_cnt, total_country_account_cnt, DENSE_RANK() OVER(ORDER BY total_country_account_cnt DESC) AS rank_total_country_account_cnt, sent_msg, total_country_sent_cnt, DENSE_RANK() OVER(ORDER BY total_country_sent_cnt DESC) AS rank_total_country_sent_cnt, open_msg, visit_msg
+FROM total
+QUALIFY DENSE_RANK() OVER(ORDER BY total_country_account_cnt DESC)<=10 OR DENSE_RANK() OVER(ORDER BY total_country_sent_cnt DESC)<=10
